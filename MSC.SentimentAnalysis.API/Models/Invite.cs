@@ -1,10 +1,12 @@
-﻿namespace MSC.SentimentAnalysis.API.Models
+﻿using System;
+
+namespace MSC.SentimentAnalysis.API.Models
 {
     public class Invite
     {
-        public int Id { get; set; }
-        public int IdEstablishment { get; set; }
-        public int IdArtist { get; set; }
+        public Guid Id { get; set; }
+        public Guid IdEstablishment { get; set; }
+        public Guid IdArtist { get; set; }
         public int ArtistRating { get; set; }
         public Comment ArtistComment { get; set; }
         public int EstablishmentRating { get; set; }

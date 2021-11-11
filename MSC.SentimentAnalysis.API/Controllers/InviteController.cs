@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ using MSC.SentimentAnalysis.API.Services;
 namespace MSC.SentimentAnalysis.API.Controllers
 {
     [ApiController]
-    [Route("api")]
+    [Route("api/invite")]
     public class InviteController : ControllerBase
     {
         private readonly IInviteRepository _inviteRepository;
@@ -26,13 +27,11 @@ namespace MSC.SentimentAnalysis.API.Controllers
             _sentimentAnalysisService = sentimentAnalysisService;
         }
 
-        [HttpPost]
-        public IActionResult CreateNewInvite(string inviteJson)
+        [HttpPost("new-invite")]
+        public IActionResult CreateNewInvite(Invite invite)
         {
             try
             {
-                var invite = DeserializeInviteJson(inviteJson);
-
                 this._inviteRepository.CreateNewInvite(invite);
                 this._inviteRepository.CreateInvitesByArtists(invite);
                 this._inviteRepository.CreateInvitesByEstablishments(invite);
@@ -46,30 +45,11 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpPost]
-        public IActionResult UpdateInvite(string inviteJson)
+        [HttpPost("update-artist-rating")]
+        public IActionResult UpdateArtistRating(Invite invite)
         {
             try
             {
-                var invite = DeserializeInviteJson(inviteJson);
-
-
-
-                return new StatusCodeResult(200);
-            }
-            catch (Exception ex)
-            {
-                return new StatusCodeResult(500);
-            }
-        }
-
-        [HttpPost]
-        public IActionResult UpdateArtistRating(string inviteJson)
-        {
-            try
-            {
-                var invite = DeserializeInviteJson(inviteJson);
-
                 invite.ArtistComment.Feeling = Convert.ToInt32(this._sentimentAnalysisService.ExecuteAnalysis(invite.ArtistComment.Content));
 
                 this._inviteRepository.UpdateArtistRating(invite);
@@ -82,13 +62,11 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpPost]
-        public IActionResult UpdateEstablishmentRating(string inviteJson)
+        [HttpPost("update-establishment-rating")]
+        public IActionResult UpdateEstablishmentRating(Invite invite)
         {
             try
             {
-                var invite = DeserializeInviteJson(inviteJson);
-
                 invite.EstablishmentComment.Feeling = Convert.ToInt32(this._sentimentAnalysisService.ExecuteAnalysis(invite.EstablishmentComment.Content));
 
                 this._inviteRepository.UpdateEstablishmentRating(invite);
@@ -101,14 +79,14 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet]
-        public IActionResult GetInviteById(Guid inviteGuid)
+        [HttpGet("find-by-id")]
+        public IActionResult GetInviteById(Invite invite)
         {
             try
             {
-                var invite = _inviteRepository.FindInviteById(inviteGuid);
+                var result = _inviteRepository.FindInviteById(invite.Id);
 
-                return Ok(GetContent(invite));
+                return Ok(GetContent(result));
             }
             catch (Exception ex)
             {
@@ -116,7 +94,7 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpGet("")]
         public IActionResult GetInvitesByLatitudeAndLongitude(Guid inviteGuid)
         {
             try
@@ -131,7 +109,7 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpGet("")]
         public IActionResult GetInvitesByEstablishments(Guid establishmentsId)
         {
             try

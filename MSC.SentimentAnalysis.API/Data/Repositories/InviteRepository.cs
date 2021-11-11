@@ -10,17 +10,21 @@ using MSC.SentimentAnalysis.API.Models.Interfaces;
 
 namespace MSC.SentimentAnalysis.API.Data.Repositories
 {
-    public class InviteRepository : Repository, IInviteRepository
+    public class InviteRepository : IInviteRepository
     {
         private readonly IMapper _mapper;
-        public InviteRepository(ISession session, IMapper mapper) : base(session)
+        private readonly ISession _session;
+
+        public InviteRepository()
         {
+            _session = CassandraConnection.OpenConnect();
+            _session.DefineMappings();
             _mapper = new Mapper(_session);
         }
 
         public void CreateNewInvite(Invite invite)
         {
-            string sql = "INSERT INTO invites" +
+            string sql = "INSERT INTO invites_dc.invites" +
                          "(id, address, address_number, artist_id, \"date\", establishment_id, latitude, longitude, postal_code)" +
                          "VALUES" +
                          "(:id, :address, :address_number, :artist_id, :\"date\", :establishment_id, :latitude, :longitude, :postal_code)";
@@ -33,7 +37,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
                     address = invite.Address, 
                     address_number = invite.AddressNumber, 
                     artist_id = invite.IdArtist,
-                    date = DateTime.Now,
+                    date = DateTime.Now.ToString("yyyy-MM-dd"),
                     establishment_id = invite.IdEstablishment,
                     latitude = invite.Latitude,
                     longitude = invite.Longitude,
@@ -45,16 +49,15 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public void CreateInvitesByLatitudeAndLongitude(Invite invite)
         {
-            string sql = "INSERT INTO invites_by_latitude_and_longitude" +
-                         "(id, invite_id, latitude, longitude" +
-                         "VALUES" +
-                         "(:id, :invite_id, :latitude, :longitude)";
+            string sql = "INSERT INTO invites_dc.invites_by_latitude_and_longitude" +
+                         " (invite_id, latitude, longitude)" +
+                         " VALUES" +
+                         " (:invite_id, :latitude, :longitude)";
 
 
             var statement = this._session.Prepare(sql)
                 .Bind(new
                 {
-                    id = Guid.NewGuid(),
                     invite_id = invite.Id,
                     latitude = invite.Latitude,
                     longitude = invite.Longitude,
@@ -65,16 +68,15 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public void CreateInvitesByEstablishments(Invite invite)
         {
-            string sql = "INSERT INTO invites_by_establishments" +
-                         "(id, invite_id, establishment_id" +
-                         "VALUES" +
-                         "(:id, :invite_id, :establishment_id)";
-
+            string sql = "INSERT INTO invites_dc.invites_by_establishments " +
+                         " (invite_id, establishment_id)" +
+                         " VALUES" +
+                         " (:invite_id, :establishment_id)";
+             
 
             var statement = this._session.Prepare(sql)
                 .Bind(new
                 {
-                    id = Guid.NewGuid(),
                     invite_id = invite.Id,
                     establishment_id = invite.IdEstablishment,
                 });
@@ -84,16 +86,15 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public void CreateInvitesByArtists(Invite invite)
         {
-            string sql = "INSERT INTO invites_by_artists" +
-                         "(id, invite_id, artist_id" +
-                         "VALUES" +
-                         "(:id, :invite_id, :artist_id)";
+            string sql = "INSERT INTO invites_dc.invites_by_artists " +
+                         " (invite_id, artist_id)" +
+                         " VALUES" +
+                         " (:invite_id, :artist_id)";
 
 
             var statement = this._session.Prepare(sql)
                 .Bind(new
                 {
-                    id = Guid.NewGuid(),
                     invite_id = invite.Id,
                     artist_id = invite.IdArtist,
                 });
@@ -103,13 +104,14 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public void UpdateArtistRating(Invite invite)
         {
-            string sql = "UPDATE invites SET artist_rating = :rating,  artist_comment = :comment WHERE id = :id";
+            string sql = "UPDATE invites_dc.invites SET artist_rating = :rating,  artist_comment = {content: :content, feeling: :feeling} WHERE id = :id";
 
             var statement = this._session.Prepare(sql)
                 .Bind(new
                 {
                     rating = invite.ArtistRating,
-                    comment = invite.ArtistComment,
+                    content = invite.ArtistComment.Content,
+                    feeling = invite.ArtistComment.Feeling,
                     id = invite.Id
                 });
 
@@ -118,13 +120,14 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public void UpdateEstablishmentRating(Invite invite)
         {
-            string sql = "UPDATE invites SET establishment_rating = :rating,  establishment_comment = :comment WHERE id = :id";
+            string sql = "UPDATE invites_dc.invites SET establishment_rating = :rating,  establishment_comment = {content: :content, feeling: :feeling} WHERE id = :id";
 
             var statement = this._session.Prepare(sql)
                 .Bind(new
                 {
                     rating = invite.EstablishmentRating,
-                    comment = invite.EstablishmentComment,
+                    content = invite.EstablishmentComment.Content,
+                    feeling = invite.EstablishmentComment.Feeling,
                     id = invite.Id
                 });
 
@@ -133,17 +136,20 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
 
         public Invite FindInviteById(Guid id)
         {
-            string sql = "SELECT * FROM invites WHERE id = ?";
+            string sql = @"SELECT id as Id, establishment_id as  IdEstablishment, artist_id as IdArtist, artist_rating as ArtistRating,
+                            artist_comment as ArtistComment, establishment_rating as EstablishmentRating, establishment_comment as EstablishmentComment,
+                            Latitude as Latitude, Longitude as Longitude, postal_code as PostalCode, Address as Address, address_number as AddressNumber 
+                            FROM invites_dc.invites WHERE id = ?";
 
             var invite = _mapper.Single<Invite>(sql, id);
 
-            return invite;
+            return invite;           
         }
 
         public List<InvitesByLatitudeAndLongitudeDto> FindInvitesByLatitudeAndLongitude(Guid inviteId)
         {
             string sql = "SELECT  invite_id AS InviteId, latitude AS Latitude, longitude AS Longitude " +
-                         " FROM invites_by_latitude_and_longitude WHERE invite_id = ?";
+                         " FROM invites_dc.invites_by_latitude_and_longitude WHERE invite_id = ?";
 
             var invites = _mapper.Fetch<InvitesByLatitudeAndLongitudeDto>(sql, inviteId);
 
@@ -153,7 +159,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
         public List<InvitesByEstablishmentsDto> FindInvitesByEstablishments(Guid establishmentsId)
         {
             string sql = "SELECT  invite_id AS InviteId, establishment_id AS EstablishmentId " +
-                         " FROM invites_by_establishments WHERE establishment_id = ?";
+                         " FROM invites_dc.invites_by_establishments WHERE establishment_id = ?";
 
             var invites = _mapper.Fetch<InvitesByEstablishmentsDto>(sql, establishmentsId);
 
@@ -163,7 +169,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
         public List<InvitesByArtists> FindInvitesByArtists(Guid artistId)
         {
             string sql = "SELECT  invite_id AS InviteId, artist_id AS ArtistId " +
-                         " FROM invites_by_artists WHERE establishment_id = ?";
+                         " FROM invites_dc.invites_by_artists WHERE establishment_id = ?";
 
             var invites = _mapper.Fetch<InvitesByArtists>(sql, artistId);
 

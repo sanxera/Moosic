@@ -15,21 +15,25 @@ namespace MSC.SentimentAnalysis.API.Services
 
             try
             {
-                ProcessStartInfo start = new ProcessStartInfo();
-                start.FileName = "C:\\Users\\Guilherme Sanches\\AppData\\Local\\Programs\\Python\\Python39\\python.exe";
-                start.Arguments = $"E:\\pythonProject\\main.py {comment}";
-                start.UseShellExecute = false;
-                start.RedirectStandardOutput = true;
-                using (Process process = Process.Start(start))
+                ProcessStartInfo start = new ProcessStartInfo
                 {
-                    using (StreamReader reader = process.StandardOutput)
-                    {
-                        string result = reader.ReadToEnd();
-                        Console.Write(result);
-                    }
-                }
+                    FileName =
+                        "C:\\Users\\Guilherme Sanches\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
+                    Arguments = $"main.py {comment}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = false
+                };
 
-                return sentiment;
+                using Process process = Process.Start(start);
+
+                if (process == null) return sentiment;
+
+                using StreamReader reader = process.StandardOutput;
+                sentiment = reader.ReadToEnd();
+
+                return sentiment.Trim();
             }
             catch (Exception ex)
             {
