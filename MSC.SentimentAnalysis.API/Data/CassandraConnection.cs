@@ -1,30 +1,28 @@
 ﻿using System;
 using Cassandra;
+using MSC.SentimentAnalysis.API.Extensions;
 
 namespace MSC.SentimentAnalysis.API.Data
 {
     public class CassandraConnection
     {
-        public static ISession OpenConnect()
+        private readonly CassandraSettings _cassandraSettings;
+
+        private CassandraConnection(CassandraSettings cassandraSettings)
+        {
+            _cassandraSettings = cassandraSettings;
+        }
+
+        public ISession OpenConnect()
         {
             var cluster = Cluster.Builder()
-                .AddContactPoints("localhost")
-                .WithPort(9042)
-                .WithAuthProvider(new PlainTextAuthProvider("cassandra", "cassandra"))
+                .AddContactPoints(_cassandraSettings.Host)
+                .WithPort(_cassandraSettings.Port)
+                .WithAuthProvider(new PlainTextAuthProvider(_cassandraSettings.User, _cassandraSettings.Password))
                 .Build();
             var session = cluster.Connect();
 
-
             return session;
-//            var keyspaceNames = session
-//                .Execute("SELECT * FROM system_schema.keyspaces")
-//                .Select(row => row.GetValue<string>("keyspace_name"));
-//​
-//            Console.WriteLine("Found keyspaces:");
-//            foreach (var name in keyspaceNames)
-//            {
-//                Console.WriteLine("- {0}", name);
-//            }
         }
     }
 }

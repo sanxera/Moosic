@@ -1,28 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Cassandra;
-using Cassandra.Mapping;
-using Microsoft.AspNetCore.Server.IIS.Core;
 using MSC.SentimentAnalysis.API.DTOs;
+using MSC.SentimentAnalysis.API.Extensions;
 using MSC.SentimentAnalysis.API.Models;
+using MSC.SentimentAnalysis.API.Models.Commands;
 using MSC.SentimentAnalysis.API.Models.Interfaces;
 
 namespace MSC.SentimentAnalysis.API.Data.Repositories
 {
-    public class InviteRepository : IInviteRepository
+    public class InviteRepository : Repository, IInviteRepository
     {
-        private readonly IMapper _mapper;
-        private readonly ISession _session;
-
-        public InviteRepository()
+        public InviteRepository(CassandraSettings cassandraSettings) : base(cassandraSettings)
         {
-            _session = CassandraConnection.OpenConnect();
-            _session.DefineMappings();
-            _mapper = new Mapper(_session);
         }
 
-        public void CreateNewInvite(Invite invite)
+        public void CreateNewInvite(CreateInvite invite)
         {
             string sql = "INSERT INTO invites_dc.invites" +
                          "(id, address, address_number, artist_id, \"date\", establishment_id, latitude, longitude, postal_code)" +
@@ -47,7 +40,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             this._session.Execute(statement);
         }
 
-        public void CreateInvitesByLatitudeAndLongitude(Invite invite)
+        public void CreateInvitesByLatitudeAndLongitude(CreateInvite invite)
         {
             string sql = "INSERT INTO invites_dc.invites_by_latitude_and_longitude" +
                          " (invite_id, latitude, longitude)" +
@@ -66,7 +59,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             this._session.Execute(statement);
         }
 
-        public void CreateInvitesByEstablishments(Invite invite)
+        public void CreateInvitesByEstablishments(CreateInvite invite)
         {
             string sql = "INSERT INTO invites_dc.invites_by_establishments " +
                          " (invite_id, establishment_id)" +
@@ -84,7 +77,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             this._session.Execute(statement);
         }
 
-        public void CreateInvitesByArtists(Invite invite)
+        public void CreateInvitesByArtists(CreateInvite invite)
         {
             string sql = "INSERT INTO invites_dc.invites_by_artists " +
                          " (invite_id, artist_id)" +
@@ -102,7 +95,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             this._session.Execute(statement);
         }
 
-        public void UpdateArtistRating(Invite invite)
+        public void UpdateArtistRating(UpdateArtistInvite invite)
         {
             string sql = "UPDATE invites_dc.invites SET artist_rating = :rating,  artist_comment = {content: :content, feeling: :feeling} WHERE id = :id";
 
@@ -118,7 +111,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             this._session.Execute(statement);
         }
 
-        public void UpdateEstablishmentRating(Invite invite)
+        public void UpdateEstablishmentRating(UpdateEstablishmentInvite invite)
         {
             string sql = "UPDATE invites_dc.invites SET establishment_rating = :rating,  establishment_comment = {content: :content, feeling: :feeling} WHERE id = :id";
 
@@ -146,12 +139,12 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
             return invite;           
         }
 
-        public List<InvitesByLatitudeAndLongitudeDto> FindInvitesByLatitudeAndLongitude(Guid inviteId)
+        public List<InvitesByLatitudeAndLongitudeDto> FindInvitesByLatitudeAndLongitude(int latitude, int longitude)
         {
             string sql = "SELECT  invite_id AS InviteId, latitude AS Latitude, longitude AS Longitude " +
-                         " FROM invites_dc.invites_by_latitude_and_longitude WHERE invite_id = ?";
+                         " FROM invites_dc.invites_by_latitude_and_longitude WHERE latitude = ? AND longitude = ?";
 
-            var invites = _mapper.Fetch<InvitesByLatitudeAndLongitudeDto>(sql, inviteId);
+            var invites = _mapper.Fetch<InvitesByLatitudeAndLongitudeDto>(sql, (float)latitude, (float)longitude);
 
             return invites.ToList();
         }
@@ -159,7 +152,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
         public List<InvitesByEstablishmentsDto> FindInvitesByEstablishments(Guid establishmentsId)
         {
             string sql = "SELECT  invite_id AS InviteId, establishment_id AS EstablishmentId " +
-                         " FROM invites_dc.invites_by_establishments WHERE establishment_id = ?";
+                         " FROM invites_dc.invites_by_establishments WHERE establishment_id = ? ALLOW FILTERING";
 
             var invites = _mapper.Fetch<InvitesByEstablishmentsDto>(sql, establishmentsId);
 
@@ -169,7 +162,7 @@ namespace MSC.SentimentAnalysis.API.Data.Repositories
         public List<InvitesByArtists> FindInvitesByArtists(Guid artistId)
         {
             string sql = "SELECT  invite_id AS InviteId, artist_id AS ArtistId " +
-                         " FROM invites_dc.invites_by_artists WHERE establishment_id = ?";
+                         " FROM invites_dc.invites_by_artists WHERE artist_id = ? ALLOW FILTERING";
 
             var invites = _mapper.Fetch<InvitesByArtists>(sql, artistId);
 

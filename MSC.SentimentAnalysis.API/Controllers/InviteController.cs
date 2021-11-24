@@ -1,14 +1,10 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MSC.SentimentAnalysis.API.Models;
+using MSC.SentimentAnalysis.API.Models.Commands;
 using MSC.SentimentAnalysis.API.Models.Interfaces;
 using MSC.SentimentAnalysis.API.Services;
 
@@ -28,7 +24,7 @@ namespace MSC.SentimentAnalysis.API.Controllers
         }
 
         [HttpPost("new-invite")]
-        public IActionResult CreateNewInvite(Invite invite)
+        public IActionResult CreateNewInvite(CreateInvite invite)
         {
             try
             {
@@ -46,7 +42,7 @@ namespace MSC.SentimentAnalysis.API.Controllers
         }
 
         [HttpPost("update-artist-rating")]
-        public IActionResult UpdateArtistRating(Invite invite)
+        public IActionResult UpdateArtistRating(UpdateArtistInvite invite)
         {
             try
             {
@@ -63,7 +59,7 @@ namespace MSC.SentimentAnalysis.API.Controllers
         }
 
         [HttpPost("update-establishment-rating")]
-        public IActionResult UpdateEstablishmentRating(Invite invite)
+        public IActionResult UpdateEstablishmentRating(UpdateEstablishmentInvite invite)
         {
             try
             {
@@ -79,14 +75,14 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet("find-by-id")]
-        public IActionResult GetInviteById(Invite invite)
+        [HttpGet("find-by-id/{inviteId}")]
+        public IActionResult GetInviteById(Guid inviteId)
         {
             try
             {
-                var result = _inviteRepository.FindInviteById(invite.Id);
+                var result = _inviteRepository.FindInviteById(inviteId);
 
-                return Ok(GetContent(result));
+                return Ok(SerializeJsonString(result));
             }
             catch (Exception ex)
             {
@@ -94,14 +90,14 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet("")]
-        public IActionResult GetInvitesByLatitudeAndLongitude(Guid inviteGuid)
+        [HttpGet("find-invites-by-latitude-longitude/{latitude}/{longitude}")]
+        public IActionResult GetInvitesByLatitudeAndLongitude(int latitude, int longitude)
         {
             try
             {
-                var invites = _inviteRepository.FindInvitesByLatitudeAndLongitude(inviteGuid);
+                var invites = _inviteRepository.FindInvitesByLatitudeAndLongitude(latitude, longitude);
 
-                return Ok(GetContent(invites));
+                return Ok(SerializeJsonString(invites));
             }
             catch (Exception ex)
             {
@@ -109,14 +105,14 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet("")]
+        [HttpGet("find-invites-by-establishments/{establishmentsId}")]
         public IActionResult GetInvitesByEstablishments(Guid establishmentsId)
         {
             try
             {
                 var invites = _inviteRepository.FindInvitesByEstablishments(establishmentsId);
 
-                return Ok(GetContent(invites));
+                return Ok(SerializeJsonString(invites));
             }
             catch (Exception ex)
             {
@@ -124,14 +120,14 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpGet("find-invites-by-artists/{artistsId}")]
         public IActionResult GetInvitesByArtists(Guid artistsId)
         {
             try
             {
                 var invites = _inviteRepository.FindInvitesByArtists(artistsId);
 
-                return Ok(GetContent(invites));
+                return Ok(SerializeJsonString(invites));
             }
             catch (Exception ex)
             {
@@ -139,19 +135,9 @@ namespace MSC.SentimentAnalysis.API.Controllers
             }
         }
 
-        private Invite DeserializeInviteJson(string json)
+        private string SerializeJsonString(object data)
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<Invite>(json, options);
-
-            return result;
-        }
-
-        protected StringContent GetContent(object data)
-        {
-            return new StringContent(JsonSerializer.Serialize(data),
-                Encoding.UTF8,
-                "application/json");
+            return JsonSerializer.Serialize(data);
         }
     }
 }
